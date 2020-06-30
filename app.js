@@ -49,7 +49,8 @@ mongoose.set("useCreateIndex", true);
 const userSchema = new mongoose.Schema({
   email: String,
   password: String,
-  googleId:String
+  googleId:String,
+  secret:String
 });
 
 
@@ -83,7 +84,7 @@ passport.use(new GoogleStrategy({
     callbackURL: "http://localhost:3000/auth/google/secrets"
   },
   function(accessToken, refreshToken, profile, cb) {
-    console.log(profile);
+    // console.log(profile);
     User.findOrCreate({ googleId: profile.id }, function (err, user) {
       return cb(err, user);
     });
@@ -109,21 +110,33 @@ app.get("/register", function(req, res) {
 
 app.get("/auth/google",
   passport.authenticate("google", { scope: ["profile"] }));
-
+//above line means we only want profile info.
 
   app.get('/auth/google/secrets',
     passport.authenticate('google', { failureRedirect: '/login' }),
     function(req, res) {
       // Successful authentication, redirect home.
       res.redirect('/secrets');
+      //we are authenticating user by google Strategy
+
     });
 
 app.get("/secrets", function(req, res) {
-  if (req.isAuthenticated()) {
-    res.render("secrets");
-  } else {
-    res.redirect("/login");
-  }
+  // if (req.isAuthenticated()) {
+  //   res.render("secrets");
+  // } else {
+  //   res.redirect("/login");
+  // }
+  //checking whether secret field is not null or null
+  User.find({secret:{$ne:null}},function(err,userFound){
+    if(err){console.log(err);}
+    else{
+      if(userFound){
+        res.render("secrets",{userWithSecrets:userFound});
+      }
+    }
+
+  });
 });
 
 
@@ -197,6 +210,30 @@ req.login(newUser,function(err){
   //   }else{res.send(err);}
   // })
 });
+
+
+app.get("/submit",function(req,res){
+  if (req.isAuthenticated()) {
+    res.render("submit");
+  } else {
+    res.redirect("/login");
+  }
+});
+
+
+app.post("/submit",function(req,res){
+
+//req.user will give you the information about current user whose session is going on
+
+  console.log(req.user._id);
+  User.updateOne({_id:req.user._id},{secret:req.body.secret},function(err){
+    if(!err){
+console.log("Update done");
+      res.redirect("/secrets");}
+  });
+
+});
+
 
 
 app.get('/logout', function(req, res){
