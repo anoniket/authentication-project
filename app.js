@@ -1,5 +1,9 @@
 //jshint esversion:6
 //the commented coded means older level of authentication!
+//
+// import React from "react";
+// import ReactDom from "react-dom";
+
 require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -34,7 +38,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-mongoose.connect("mongodb://localhost:27017/userDB", {
+mongoose.connect(process.env.mongourl, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
@@ -48,8 +52,10 @@ mongoose.set("useCreateIndex", true);
 
 const userSchema = new mongoose.Schema({
   email: String,
+  username: String,
   password: String,
   googleId:String,
+  googleName: String,
   secret:String
 });
 
@@ -81,11 +87,11 @@ passport.deserializeUser(function(User, done) {
 passport.use(new GoogleStrategy({
     clientID: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
-    callbackURL: "http://localhost:3000/auth/google/secrets"
+    callbackURL: "/auth/google/secrets"
   },
   function(accessToken, refreshToken, profile, cb) {
     // console.log(profile);
-    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+    User.findOrCreate({ googleId: profile.id, googleName: profile.displayName, username: profile.id}, function (err, user) {
       return cb(err, user);
     });
   }
@@ -214,8 +220,10 @@ req.login(newUser,function(err){
 
 app.get("/submit",function(req,res){
   if (req.isAuthenticated()) {
+    console.log(req.user);
     res.render("submit");
   } else {
+    console.log(req.user);
     res.redirect("/login");
   }
 });
@@ -242,6 +250,6 @@ app.get('/logout', function(req, res){
 });
 
 
-app.listen(3000, function() {
+app.listen(process.env.port||3000, function() {
   console.log("Einates at your service master!");
 })
